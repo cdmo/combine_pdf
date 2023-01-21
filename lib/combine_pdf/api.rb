@@ -1,13 +1,15 @@
-# -*- encoding : utf-8 -*-
-
 module CombinePDF
   module_function
 
   # Create an empty PDF object or create a PDF object from a file (parsing the file).
   # file_name:: is the name of a file to be parsed.
   def load(file_name = '', options = {})
-    raise TypeError, "couldn't parse data, expecting type String" unless file_name.is_a?(String) || file_name.is_a?(Pathname)
+    unless file_name.is_a?(String) || file_name.is_a?(Pathname)
+      raise TypeError,
+            "Couldn't parse data, expecting type String but got #{data.class}"
+    end
     return PDF.new if file_name == ''
+
     PDF.new(PDFParser.new(IO.read(file_name, mode: 'rb').force_encoding(Encoding::ASCII_8BIT), options))
   end
 
@@ -21,14 +23,23 @@ module CombinePDF
   # For both performance and code readability reasons, `CombinePDF.load` and `CombinePDF.parse` should be preffered unless creating a new PDF object.
   def new(string = false)
     return PDF.new unless string
-    raise TypeError, "couldn't create PDF object, expecting type String" unless string.is_a?(String) || string.is_a?(Pathname)
+
+    unless string.is_a?(String) || string.is_a?(Pathname)
+      raise TypeError,
+            "Couldn't create PDF object, expecting type String, but got #{data.class}"
+    end
+
     begin
-      (begin
+      if begin
         File.file? string
-      rescue
+      rescue StandardError
         false
-      end) ? load(string) : parse(string)
-    rescue => _e
+      end
+        load(string)
+      else
+        parse(string)
+      end
+    rescue StandardError => _e
       raise 'General PDF error - Use CombinePDF.load or CombinePDF.parse for a non-general error message (the requested file was not found OR the string received is not a valid PDF stream OR the file was found but not valid).'
     end
   end
@@ -36,7 +47,8 @@ module CombinePDF
   # Create a PDF object from a raw PDF data (parsing the data).
   # data:: is a string that represents the content of a PDF file.
   def parse(data, options = {})
-    raise TypeError, "couldn't parse and data, expecting type String" unless data.is_a? String
+    raise TypeError, "Couldn't parse data, expecting type String, but got #{data.class}" unless data.is_a? String
+
     PDF.new(PDFParser.new(data, options))
   end
 
@@ -172,8 +184,9 @@ module CombinePDF
   def eq_depth_limit
     @eq_depth_limit
   end
+
   # Sets the equality depth limit. This is the point at which CombinePDF will stop testing for nested items being equal.
-  def eq_depth_limit= value
+  def eq_depth_limit=(value)
     @eq_depth_limit = value
   end
   @eq_depth_limit = 8
